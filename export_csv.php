@@ -1,0 +1,8 @@
+<?php
+require_once __DIR__ . '/includes/functions.php';require_login();
+$q=trim($_GET['q']??'');$category=trim($_GET['category']??'all');$date=trim($_GET['date']??'');$where=['1=1'];$params=[];
+if($q!==''){$where[]='(a.title LIKE :q1 OR a.description LIKE :q2 OR a.location LIKE :q3 OR a.category LIKE :q4)';foreach([':q1',':q2',':q3',':q4'] as $key)$params[$key]='%'.$q.'%';}
+if($category!=='all'&&$category!==''){$where[]='a.category=:category';$params[':category']=$category;}
+if($date!==''&&valid_date($date)){$where[]='a.activity_date=:date';$params[':date']=$date;}
+$sql='SELECT a.id,u.name,u.department,a.title,a.activity_date,a.activity_time,a.category,a.location,a.description,a.created_at,(SELECT GROUP_CONCAT(p.file_name ORDER BY p.id SEPARATOR \' | \') FROM activity_photos p WHERE p.activity_id=a.id) AS photos,(SELECT COUNT(*) FROM activity_photos p2 WHERE p2.activity_id=a.id) AS photo_count FROM activities a JOIN users u ON u.id=a.user_id WHERE '.implode(' AND ',$where).' ORDER BY a.activity_date DESC,a.activity_time DESC,a.id DESC';$stmt=db()->prepare($sql);$stmt->execute($params);
+header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="activitylog-'.date('Y-m-d').'.csv"');$out=fopen('php://output','w');fwrite($out,"\xEF\xBB\xBF");fputcsv($out,['ID','Nama Anggota','Unit','Judul Kegiatan','Tanggal','Waktu','Kategori','Lokasi','Catatan','Jumlah Foto','File Foto','Dibuat'],';');while($row=$stmt->fetch()){fputcsv($out,[$row['id'],$row['name'],$row['department'],$row['title'],$row['activity_date'],$row['activity_time'],$row['category'],$row['location'],$row['description'],$row['photo_count'],$row['photos'],$row['created_at']],';');}fclose($out);exit;

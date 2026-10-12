@@ -1,0 +1,14 @@
+<?php
+require_once __DIR__ . '/includes/functions.php';require_login();
+$page_title='Galeri Dokumentasi';$active_page='gallery';$activityId=(int)($_GET['activity_id']??0);$q=trim($_GET['q']??'');
+$where=['1=1'];$params=[];if($activityId>0){$where[]='a.id=:activity_id';$params[':activity_id']=$activityId;}if($q!==''){$where[]='(a.title LIKE :q1 OR u.name LIKE :q2 OR u.department LIKE :q3 OR a.category LIKE :q4)';foreach([':q1',':q2',':q3',':q4'] as $key)$params[$key]='%'.$q.'%';}
+$sql='SELECT p.id AS photo_id,p.file_name,p.uploaded_at,a.id AS activity_id,a.title,a.activity_date,a.category,u.name AS user_name,u.department FROM activity_photos p JOIN activities a ON a.id=p.activity_id JOIN users u ON u.id=a.user_id WHERE '.implode(' AND ',$where).' ORDER BY a.activity_date DESC,p.id DESC';$stmt=db()->prepare($sql);$stmt->execute($params);$photos=$stmt->fetchAll();
+require __DIR__ . '/partials/header.php';
+?>
+<div class="section-head page-head"><div><h2>Galeri Dokumentasi</h2><p>Lihat foto kegiatan yang telah diunggah oleh anggota instansi.</p></div><a href="activity_form.php" class="btn btn-primary">＋ Tambah Kegiatan</a></div>
+<form class="filter-box gallery-filter" method="get"><div class="search-input"><span>⌕</span><input name="q" value="<?= e($q) ?>" placeholder="Cari kegiatan, kategori, atau nama anggota..."></div><?php if($activityId): ?><input type="hidden" name="activity_id" value="<?= $activityId ?>"><?php endif; ?><button class="btn btn-secondary" type="submit">Cari foto</button><a href="gallery.php<?= $activityId?'?activity_id='.(int)$activityId:'' ?>" class="btn btn-ghost">Reset</a></form>
+<div class="result-head"><span><?= count($photos) ?> foto ditemukan</span><span>Foto disimpan di server aplikasi</span></div><div class="gallery-grid">
+<?php if(!$photos): ?><div class="empty wide"><strong>Belum ada foto dokumentasi.</strong><span>Foto akan muncul setelah anggota mengunggahnya pada formulir kegiatan.</span></div><?php endif; ?>
+<?php foreach($photos as $photo): ?><article class="gallery-card"><a class="gallery-image" href="<?= e(photo_url((int)$photo['photo_id'])) ?>" data-lightbox-src="<?= e(photo_url((int)$photo['photo_id'])) ?>" data-lightbox-alt="Dokumentasi <?= e($photo['title']) ?>"><img loading="lazy" src="<?= e(photo_url((int)$photo['photo_id'])) ?>" alt="Dokumentasi <?= e($photo['title']) ?>"><span>Lihat foto ⤢</span></a><div class="gallery-caption"><strong><a href="activity_view.php?id=<?= (int)$photo['activity_id'] ?>"><?= e($photo['title']) ?></a></strong><span><?= e(format_date_id($photo['activity_date'])) ?> · <?= e($photo['category']) ?></span><small><?= e($photo['user_name']) ?><?= $photo['department']?' · '.e($photo['department']):'' ?></small></div></article><?php endforeach; ?>
+</div>
+<?php require __DIR__ . '/partials/footer.php'; ?>
